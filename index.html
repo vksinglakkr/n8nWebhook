@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>AI Question Answerer</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 600px; margin: 40px auto; padding: 20px; }
+        textarea { width: 100%; height: 100px; margin: 10px 0; }
+        button { padding: 10px 20px; background: #4CAF50; color: white; border: none; cursor: pointer; }
+        #response { margin-top: 20px; padding: 15px; background: #f0f0f0; border-radius: 4px; display: none; }
+        .loading { color: #888; }
+    </style>
+</head>
+<body>
+    <h1>Ask AI a Question</h1>
+    <form id="aiForm">
+        <label for="question">Your Question:</label><br>
+        <textarea id="question" name="question" required></textarea><br>
+        <button type="submit">Get Answer</button>
+    </form>
+    <div id="response"></div>
+
+    <script>
+        document.getElementById('aiForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const question = document.getElementById('question').value;
+            const responseDiv = document.getElementById('response');
+            responseDiv.innerHTML = '<div class="loading">Thinking...</div>';
+            responseDiv.style.display = 'block';
+            
+            fetch('https://poonamvinod.n8n.cloud/webhook/ai-answer', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ question: question })
+            })
+            .then(response => response.json())
+            .then(data => {
+                responseDiv.innerHTML = `<strong>Answer:</strong><br>${data.answer || 'No answer.'}`;
+            })
+            .catch(err => {
+                responseDiv.innerHTML = `<strong>Error:</strong> ${err.message}`;
+            });
+        });
+    </script>
+</body>
+</html>
