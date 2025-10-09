@@ -6,38 +6,75 @@
         body { font-family: Arial, sans-serif; max-width: 600px; margin: 40px auto; padding: 20px; }
         textarea { width: 100%; height: 100px; margin: 10px 0; }
         button { padding: 10px 20px; background: #4CAF50; color: white; border: none; cursor: pointer; }
-        #response { margin-top: 20px; padding: 15px; background: #f0f0f0; border-radius: 4px; display: none; }
-        .loading { color: #888; }
+        #response { margin-top: 20px; padding: 15px; background: #f9f9f9; border-radius: 4px; display: none; }
+        .error { color: #d32f2f; background: #ffebee; }
+        .success { color: #2e7d32; }
+        .loading { color: #1976d2; }
     </style>
 </head>
 <body>
     <h1>Ask AI a Question</h1>
     <form id="aiForm">
         <label for="question">Your Question:</label><br>
-        <textarea id="question" name="question" required></textarea><br>
+        <textarea id="question" name="question" required placeholder="e.g., What is photosynthesis?"></textarea><br>
         <button type="submit">Get Answer</button>
     </form>
     <div id="response"></div>
 
     <script>
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
         document.getElementById('aiForm').addEventListener('submit', function(e) {
             e.preventDefault();
-            const question = document.getElementById('question').value;
+            const question = document.getElementById('question').value.trim();
             const responseDiv = document.getElementById('response');
-            responseDiv.innerHTML = '<div class="loading">Thinking...</div>';
-            responseDiv.style.display = 'block';
             
-            fetch('https://aarvisingla1609.app.n8n.cloud/webhook/ai-answer', {
+            if (!question) {
+                responseDiv.className = 'error';
+                responseDiv.innerHTML = '<strong>Error:</strong> Please enter a question.';
+                responseDiv.style.display = 'block';
+                return;
+            }
+
+            responseDiv.className = 'loading';
+            responseDiv.innerHTML = 'Thinking...';
+            responseDiv.style.display = 'block';
+
+            fetch('https://poonamvinod.n8n.cloud/webhook/ai-answer', {
                 method: 'POST',
-                headers: {'Content-Type': 'application/json'},
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ question: question })
             })
-            .then(response => response.json())
+            .then(response => {
+                // Show HTTP errors clearly
+                if (!response.ok) {
+                    return response.text().then(text => {
+                        throw new Error(`HTTP ${response.status}: ${text}`);
+                    });
+                }
+                return response.json();
+            })
             .then(data => {
-                responseDiv.innerHTML = `<strong>Answer:</strong><br>${data.answer || 'No answer.'}`;
+                // Handle both success and error from n8n
+                if (data.error) {
+                    responseDiv.className = 'error';
+                    responseDiv.innerHTML = `<strong>AI Error:</strong> ${escapeHtml(data.error)}`;
+                } else if (data.answer) {
+                    responseDiv.className = 'success';
+                    responseDiv.innerHTML = `<strong>Answer:</strong><br>${escapeHtml(data.answer)}`;
+                } else {
+                    responseDiv.className = 'error';
+                    responseDiv.innerHTML = '<strong>Unexpected response:</strong> ' + JSON.stringify(data);
+                }
             })
             .catch(err => {
-                responseDiv.innerHTML = `<strong>Error:</strong> ${err.message}`;
+                console.error('Frontend Error:', err);
+                responseDiv.className = 'error';
+                responseDiv.innerHTML = `<strong>Connection Failed:</strong> ${escapeHtml(err.message)}`;
             });
         });
     </script>
